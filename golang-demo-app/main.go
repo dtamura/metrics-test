@@ -13,7 +13,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gin-gonic/gin/otelgin"
-	"go.opentelemetry.io/contrib/instrumentation/runtime"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
@@ -27,6 +26,7 @@ import (
 
 var (
 	tracer            = otel.Tracer("test-tracer")
+	meter             = otel.Meter("test-meter")
 	initResourcesOnce sync.Once
 	resource          *sdkresource.Resource
 )
@@ -143,10 +143,10 @@ func main() {
 
 	// Goのランタイムメトリクス
 	// 1秒おきにCollectorへ送信する
-	err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
-	if err != nil {
-		log.Fatal(err)
-	}
+	// err := runtime.Start(runtime.WithMinimumReadMemStatsInterval(time.Second))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	// Gin mode:
 	//  - using env:   export GIN_MODE=release

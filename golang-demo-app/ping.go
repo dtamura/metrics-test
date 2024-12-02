@@ -6,16 +6,28 @@ import (
 	"errors"
 	"math/rand"
 	"net/http"
-	"os"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 )
+
+var apiCounter metric.Int64Counter
+
+func init() {
+	var err error
+	apiCounter, err = meter.Int64Counter(
+		"dtamura.api.counter",
+		metric.WithDescription("Number of API calls."),
+		metric.WithUnit("{call}"),
+	)
+	if err != nil {
+		panic(err)
+	}
+}
 
 func pingHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -44,28 +56,7 @@ func ping(ctx context.Context) string {
 	ctx, span := tracer.Start(ctx, "pong", trace.WithSpanKind(trace.SpanKindClient))
 	defer span.End()
 
-	// create http request
-	client := &http.Client{}
-
-	target := os.Getenv("PING_TARGET_URL")
-	req, err := http.NewRequest("GET", target+"/greeting", nil)
-	if err != nil {
-		log.Error(err)
-		return ""
-	}
-	propagator := otel.GetTextMapPropagator()
-	propagator.Inject(ctx, propagation.HeaderCarrier(req.Header))
-
-	req.Header.Add("Content-Type", "application/json")
-
-	// Start Request
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Error(err)
-		span.End()
-		return ""
-	}
-	defer resp.Body.Close()
+	apiCounter.Add(ctx, 1)
 
 	// 一定の割合で意図的な遅延
 	if rand.Float64() < 0.2 {
@@ -75,17 +66,5 @@ func ping(ctx context.Context) string {
 	}
 	span.End()
 
-	var data struct {
-		Id      int
-		Content string
-		TraceId string
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		log.Error(err)
-		span.RecordError(err)
-		span.End()
-		return ""
-	}
-
-	return data.Content
+	return "Hello World"
 }

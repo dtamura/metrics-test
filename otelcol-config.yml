@@ -47,4 +47,4 @@ service:
     metrics:
       receivers: [otlp]
       processors: [batch, resourcedetection]
-      exporters: [otlphttp/prometheus]
+      exporters: [otlphttp/prometheus, debug]
