@@ -1,0 +1,49 @@
+services:
+
+  app:
+    build: ./golang-demo-app
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otelcol:4318
+      - OTEL_RESOURCE_ATTRIBUTES=deployment.environment=prod,service.version=0.0.1
+      - OTEL_SERVICE_NAME=golang-demo-app
+      - VERSION=0.0.1
+      - ENV=prod
+      - PING_TARGET_URL=http://java-demo-app:8081
+    ports:
+      - 3001:3000
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    ports:
+      - "9090:9090"
+    command:
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --web.enable-remote-write-receiver # tempoからのremote-write受信のため
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+      - --web.route-prefix=/
+      - "--enable-feature=exemplar-storage" # examplar の保存
+      - "--enable-feature=otlp-write-receiver" # OTLP
+    volumes:
+      - "./prometheus.yml:/etc/prometheus/prometheus.yml"
+    restart: unless-stopped
+
+ # And put them in an OTEL collector pipeline...
+  otelcol:
+    # image: otel/opentelemetry-collector:0.61.0
+    image: otel/opentelemetry-collector-contrib:0.112.0
+    # build: ./otelcol-build
+    command:
+      - "--config=/etc/otelcol-config.yml"
+    volumes:
+      - ./otelcol-config.yml:/etc/otelcol-config.yml
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    ports:
+      - "4317:4317" # OTLP over gRPC receiver
+      - "4318:4318" # OTLP over HTTP receiver
+      - "9464" # Prometheus exporter
+      - "8888" # metrics endpoint
+    restart: unless-stopped

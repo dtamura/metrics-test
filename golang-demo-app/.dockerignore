@@ -1,0 +1,6 @@
+docker-compose.yaml
+deployments
+skaffold.yaml
+README.md
+.gitlab-ci.yml
+cloudbuild.yaml
